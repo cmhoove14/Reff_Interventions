@@ -29,15 +29,13 @@ mu_H <- (1/(60*365)) #Natural human death rate
 f_N <- 0.1 #Intrinsic snail fertility rate
 m1 <- 140 #Rate of stage 1 larval production per mated female worm
 m2 <- 3500 #Rate of stage 2 larval production per infected intermediate host
-lambda <- 1.55e-04/m2 #Snail to human transmission parameter
-beta <- 4e-06/m1 #Human to snail transmission parameter
+beta <- 5.6e-03 #Human to snail transmission parameter
 sigma <- 1/40 #Exposed to infected snail transition rate
 K <- 10000 #Ecosystem snail carrying capacity
-nu <- #Fraction of miracida that make their way into waterway
-omega <- #Degree of crossover between snail habitats and human-water contact sites
-r <- #Human population cumulative water contact rate
-a <- #Per cercariae probability of human-cercaria contact given a infected water contact
-pi <- #Probability of parasite establishment given a human-cercariae contact
+nu <- 0.1 #Fraction of miracida that make their way into waterway
+omega <- 1 #Degree of crossover between snail habitats and human-water contact sites (site specific)
+rho <- .43 #Per-capita human water contact rate
+pi <- 5e-07 #Probability of parasite establishment per human water contact for an individual cercariae 
 c <- 50 #Number of Intermediate Host per Unit Area
 
 
@@ -61,7 +59,7 @@ phi_Wk <- function(W,k=0.08) {
   return(1-val)
 }
 ##Host Immunosuppression
-Is_W <- function(W,gamma=2,omega=.1) {
+psi_W <- function(W,gamma=2,omega=.1) {
   (1+(gamma*omega*W))/(1+(omega*W))
 }
 ##Parasite Fecundity
@@ -125,13 +123,13 @@ helminth_ODE <- function(time, state, params) {
   C <- I*m2
   
   ### Snail to Human Transmission Parameter
-  lambda <- r*omega*a*pi
+  lambda <- rho*omega*pi
   
   ### ODE 
   dS<- theta*(S + E) - mu_N*S - beta*M*S
   dE<- beta*M*S - (sigma + mu_N)*E
   dI<- sigma*E - (mu_N + mu_I)*I
-  dW<- lambda*Is*C - (mu_H + mu_W + delta)*W
+  dW<- lambda*psi*C - (mu_H + mu_W + delta)*W
 
   return(list(c(dS,dE,dI,dW,dR)))
   
@@ -179,28 +177,27 @@ labs(x = "Time", y = "W")
 
 ### Compute Values of Reff(W)
 reff<-function(W) {
+  ### Density Dependent Function Values
+  phi <- phi_Wk(W,k=.08)
+  psi <- Is_W(W,gamma=5,omega=.1)
+  f <- f_Wgk(W,gamma=.047,k=.08)
+  delta <- delta_Wgk(W,gamma=.00001,k=.08)
+  theta <- theta_NA(N,A)
   
-  phi <- phi_Wk(W,k=.1)
-  f <- f_Wgk(W,gamma=.1,k=.1)
-  delta <- delta_Wgk(W,gamma=.0001,k=.1)
-  Ipa <- Ipa_Rg(R=W/rho,gamma=.02)
-  Ipb <- Ipb_Rg(R=W/rho,gamma=0.5)
-  Is <- Is_W(W,gamma=5,omega=.2)
-  
+  ### Dummy Assignments Used to Isolate Effects of Specific DD's
   #phi <- 1
   #f <- 1
-  delta <- 0
-  Ipa <- 1
-  Ipb <- 1
-  Is <- 1
-
-  L1 <- (.5*W*H*phi*f*m1)
-  c1 <- as.numeric(beta*L1/(mu_N+sigma))
-  c2 <- as.numeric(sigma/(mu_N+mu_I))
-  S_eqnum <- as.numeric(K*(f_N*(1+c1)-mu_N-(beta*L1)))
-  S_eqdem <- as.numeric(f_N*(1+c1)*(1+c1+(c1*c2)))
-  S_eq <- as.numeric(S_eqnum/S_eqdem)
-  as.numeric(lambda*Ipa*Ipb*Is*m2*c1*c2*S_eq/((mu_W+mu_H+delta)*W))
+  #delta <- 0
+  #theta <- 1
+  #psi <- 1
+  
+  x1 <- sigma/(mu_N+mu_I)
+  x2 <- beta*M/(sigma+mu_N)
+  M <- .5*W*H*phi*f*m1*nu*omega
+  S_eq <- (c*A/(1+x2+x1*x2))*(1-(mu_N+beta*M)/(f_N*(1+x2)))
+  num <- rho*omega*pi*m2*x1*x2*psi*S_eq
+  den <- (mu_W+mu_H+delta)*W
+  reff <- as.numeric(num/den)
 }
 
 
@@ -290,25 +287,24 @@ for(i in 1:length(param_vals)) {
 
   ### Reff Function w/Parmeter Value Substituted. To compute Rpeak, Wpeak
   Reff_peak<-function(W) {
-    phi <- phi_Wk(W,k=.1)
-    f <- f_Wgk(W,gamma=param_vals[i],k=.1)
-    delta <- delta_Wgk(W,gamma=.0001,k=.1)
-    Ipa <- Ipa_Rg(R=W/rho,gamma=.02)
-    Ipb <- Ipb_Rg(R=W/rho,gamma=0.5)
-    Is <- Is_W(W,gamma=5,omega=.2)
+    phi <- phi_Wk(W,k=.08)
+    psi <- Is_W(W,gamma=5,omega=.1)
+    f <- f_Wgk(W,gamma=param_vals[i],k=.08)
+    delta <- delta_Wgk(W,gamma=.00001,k=.08)
+    theta <- theta_NA(N,A)
     #phi <- 1
     #f <- 1
-    delta <- 0
-    Ipa <- 1
-    Ipb <- 1
-    Is <- 1
-    L1 <- .5*W*H*phi*f*m1
-    c1 <- as.numeric(beta*L1/(mu_N+sigma))
-    c2 <- as.numeric(sigma/(mu_N+mu_I))
-    S_eqnum <- as.numeric(K*(f_N*(1+c1)-mu_N-(beta*L1)))
-    S_eqdem <- as.numeric(f_N*(1+c1)*(1+c1+(c1*c2)))
-    S_eq <- as.numeric(S_eqnum/S_eqdem)
-    Reff <- as.numeric(lambda*Ipa*Ipb*Is*m2*c1*c2*S_eq/((mu_W+mu_H+delta)*W))
+    #delta <- 0
+    #theta <- 1
+    #psi <- 1
+    
+    x1 <- sigma/(mu_N+mu_I)
+    x2 <- beta*M/(sigma+mu_N)
+    M <- .5*W*H*phi*f*m1*nu*omega
+    S_eq <- (c*A/(1+x2+x1*x2))*(1-(mu_N+beta*M)/(f_N*(1+x2)))
+    num <- rho*omega*pi*m2*x1*x2*psi*S_eq
+    den <- (mu_W+mu_H+delta)*W
+    reff <- as.numeric(num/den)
   }
 
   ### Compute Rpeak, Wpeak
@@ -323,25 +319,24 @@ for(i in 1:length(param_vals)) {
   
   ### Reff Function w/Param Value Substituted, 1 subtracted from Reff. To Compute Wbp, Weeq
   Reff_roots<-function(W) {
-    phi <- phi_Wk(W,k=.1)
-    f <- f_Wgk(W,gamma=param_vals[i],k=.1)
-    delta <- delta_Wgk(W,gamma=.0001,k=.1)
-    Ipa <- Ipa_Rg(R=W/rho,gamma=.02)
-    Ipb <- Ipb_Rg(R=W/rho,gamma=0.5)
-    Is <- Is_W(W,gamma=5,omega=.2)
+    phi <- phi_Wk(W,k=.08)
+    psi <- Is_W(W,gamma=5,omega=.1)
+    f <- f_Wgk(W,gamma=param_vals[i],k=.08)
+    delta <- delta_Wgk(W,gamma=.00001,k=.08)
+    theta <- theta_NA(N,A)
     #phi <- 1
     #f <- 1
-    delta <- 0
-    Ipa <- 1
-    Ipb <- 1
-    Is <- 1
-    L1 <- .5*W*H*phi*f*m1
-    c1 <- as.numeric(beta*L1/(mu_N+sigma))
-    c2 <- as.numeric(sigma/(mu_N+mu_I))
-    S_eqnum <- as.numeric(K*(f_N*(1+c1)-mu_N-(beta*L1)))
-    S_eqdem <- as.numeric(f_N*(1+c1)*(1+c1+(c1*c2)))
-    S_eq <- as.numeric(S_eqnum/S_eqdem)
-    Reff <- as.numeric((lambda*Ipa*Ipb*Is*m2*c1*c2*S_eq/((mu_W+mu_H+delta)*W)) - 1)
+    #delta <- 0
+    #theta <- 1
+    #psi <- 1
+    
+    x1 <- sigma/(mu_N+mu_I)
+    x2 <- beta*M/(sigma+mu_N)
+    M <- .5*W*H*phi*f*m1*nu*omega
+    S_eq <- (c*A/(1+x2+x1*x2))*(1-(mu_N+beta*M)/(f_N*(1+x2)))
+    num <- rho*omega*pi*m2*x1*x2*psi*S_eq
+    den <- (mu_W+mu_H+delta)*W
+    reff <- as.numeric(num/den - 1)
   }
   
   ### Compute Wbp, Weeq
