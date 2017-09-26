@@ -27,16 +27,17 @@ mu_I <- ((1/10)-(1/60)) #Increased death rate of infected snails
 mu_W <- (1/(3.3*365)) #Natural mature parasite death rate
 mu_H <- (1/(60*365)) #Natural human death rate
 f_N <- 0.1 #Intrinsic snail fertility rate
-m1 <- 140 #Rate of stage 1 larval production per mated female worm
-m2 <- 3500 #Rate of stage 2 larval production per infected intermediate host
-beta <- 5.6e-03 #Human to snail transmission parameter
+m1 <- 140 #Rate of miracidia production per mated female worm
+m2 <- 3500 #Rate of cercariae production per infected intermediate host
+beta <- 5.6e-06 #Human to snail transmission parameter
 sigma <- 1/40 #Exposed to infected snail transition rate
 K <- 10000 #Ecosystem snail carrying capacity
 nu <- 0.1 #Fraction of miracida that make their way into waterway
 omega <- 1 #Degree of crossover between snail habitats and human-water contact sites (site specific)
 rho <- .43 #Per-capita human water contact rate
-pi <- 5e-07 #Probability of parasite establishment per human water contact for an individual cercariae 
-c <- 50 #Number of Intermediate Host per Unit Area
+pi_c <- 5e-08 #Probability of parasite establishment per human water contact for an individual cercariae 
+s <- 50 #Number of snails per Unit Area
+A <- 20 #Habitable units of area
 
 
 
@@ -48,16 +49,29 @@ c <- 50 #Number of Intermediate Host per Unit Area
 #####################################################################
 
 ##Parasite Mating Function
-phi_Wk <- function(W,k=0.08) {
-  func <- function(x) {
-    a <- ( W / (W + k) )
-    c <- ((1-a)^(1+k))/(2*pi)
-    return(( c*( 1-cos(x) ) / (( 1 + a*cos(x) )^(1+k)) ))
-  }
-  val = integrate(func, 0, 2*pi, subdivisions = 10000, 
-                  rel.tol = 1e-10, stop.on.error = FALSE)$value
-  return(1-val)
+# phi_Wk <- function(W,k=0.1) {
+#   func <- function(x) {
+#     a <- ( W / (W + k) )
+#     b <- ((1-a)^(1+k))/(2*pi)
+#     return(( b*( 1-cos(x) ) / (( 1 + a*cos(x) )^(1+k)) ))
+#   }
+#   val = integrate(func, 0, 2*pi, subdivisions = 10000, 
+#                   rel.tol = 1e-10, stop.on.error = FALSE)$value
+#   return(1-val)
+# }
+
+
+#Mating probability function
+fx<-function(x, mean.worm=.2, clump=.08){
+  alpha<-(mean.worm)/(clump+mean.worm)
+  (1-cos(x)) / ( (1+(alpha*cos(x)))^(1+clump) )
 }
+
+phi_Wk<-function(W, k=.08){
+  alpha<-W/(W+k)
+  1-( (1-alpha)^(k+1) * (integrate(fx, 0, 2*pi, W, k)$value) /(2*pi)  )
+} 
+
 ##Host Immunosuppression
 psi_W <- function(W,gamma=2,omega=.1) {
   (1+(gamma*omega*W))/(1+(omega*W))
@@ -72,7 +86,7 @@ delta_Wgk <- function(W,gamma=.00001,k=0.08) {
 }
 ##Intermediate Host Fertility
 theta_NA <- function(N,A) {
-  f_N*(1-(N/c*A))
+  f_N*(1-(N/s*A))
 }
 
 
@@ -123,7 +137,7 @@ helminth_ODE <- function(time, state, params) {
   C <- I*m2
   
   ### Snail to Human Transmission Parameter
-  lambda <- rho*omega*pi
+  lambda <- rho*omega*pi_c
   
   ### ODE 
   dS<- theta*(S + E) - mu_N*S - beta*M*S
@@ -168,13 +182,17 @@ labs(x = "Time", y = "W")
 
 
 
-
+r0 <- function() {
+  N_eq <- s*A*(1-mu_N/f_N)
+  num <- .5*beta*m1*nu*omega*H*N_eq*sigma*rho*omega*pi_c*m2
+  denom <- (mu_N + sigma)*(mu_N + mu_I)*(mu_W + mu_H)
+  as.numeric(num/denom)
+}
 
 
 #####################################################################
 ##### PLOT REFF PROFILE  #############################################
 ########################################################################
-
 ### Compute Values of Reff(W)
 reff<-function(W) {
   ### Density Dependent Function Values
@@ -182,20 +200,18 @@ reff<-function(W) {
   psi <- Is_W(W,gamma=5,omega=.1)
   f <- f_Wgk(W,gamma=.047,k=.08)
   delta <- delta_Wgk(W,gamma=.00001,k=.08)
-  theta <- theta_NA(N,A)
-  
+
   ### Dummy Assignments Used to Isolate Effects of Specific DD's
   #phi <- 1
-  #f <- 1
-  #delta <- 0
-  #theta <- 1
-  #psi <- 1
+  f <- 1
+  delta <- 0
+  psi <- 1
   
+  M <- .5*W*H*phi*f*m1*nu*omega
   x1 <- sigma/(mu_N+mu_I)
   x2 <- beta*M/(sigma+mu_N)
-  M <- .5*W*H*phi*f*m1*nu*omega
-  S_eq <- (c*A/(1+x2+x1*x2))*(1-(mu_N+beta*M)/(f_N*(1+x2)))
-  num <- rho*omega*pi*m2*x1*x2*psi*S_eq
+  S_eq <- (s*A/(1+x2+x1*x2))*(1-(mu_N+beta*M)/(f_N*(1+x2)))
+  num <- rho*omega*pi_c*m2*x1*x2*psi*S_eq
   den <- (mu_W+mu_H+delta)*W
   reff <- as.numeric(num/den)
 }
@@ -203,13 +219,13 @@ reff<-function(W) {
 
 ### Vector of W Values to Compute Reff, Reff', and Reff'' Over
 #Worm Burden Values
-w_vals <- c(seq(from=0, to=10, by = 0.01))
+w_vals <- c(seq(from=0, to=1, by=0.001), seq(from=1, to=30, by=.01))
 reff_vals <- as.numeric()
 grad_vals <- as.numeric()
 hess_vals <- as.numeric()
 for(i in 1:length(w_vals)) {
-  grad_vals[i] <- grad(reff, w_vals[i])
-  hess_vals[i] <- hessian(reff, w_vals[i])
+  #grad_vals[i] <- grad(reff, w_vals[i])
+  #hess_vals[i] <- hessian(reff, w_vals[i])
   reff_vals[i] <- reff(w_vals[i])
 }
 
@@ -219,10 +235,10 @@ reff_data <- data.frame(reff_vals)
 grad_data <- data.frame(grad_vals)
 w_data <- data.frame(w_vals)
 ggplot(grad_data, aes(x=w_data, y=grad_data)) +
-  #geom_line(aes(y = reff_data)) +
+  geom_line(aes(y = reff_data)) +
   #geom_line(aes(y = grad_data)) +
   #geom_line(aes(y = hess_data)) +
-  #geom_hline(linetype="longdash", yintercept = 1) +
+  geom_hline(linetype="longdash", yintercept = 1) +
   #geom_hline(linetype="longdash", yintercept = 0) +
   labs(x=expression('W'), y=expression('R'["eff"]))
 
