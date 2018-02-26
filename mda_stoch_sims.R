@@ -2,7 +2,8 @@ library(deSolve)
 library(adaptivetau)
 
 source("/Users/lukestrgar/Documents/lab/params.R")
-
+source("/Users/lukestrgar/Documents/lab/stochastic_models.R")
+source("/Users/lukestrgar/Documents/lab/deterministic_models.R")
 
 ####### MDA, MDA + ALT INT STOCHASTIC SIMULATIONS #####################################
 ################################################################################################
@@ -39,13 +40,13 @@ stoch.sim = function(init, cov, sim){
   print("Simulation #")
   print(sim)
   eq = as.data.frame(ode(y=init,times=seq(0,200*365,30),
-                         func=schisto_ODE,parms=params,method="ode23"))[length(seq(0,200*365,30)), c(2:6)]
+                         func=schisto_MDA_ODE,parms=params,method="ode23"))[length(seq(0,200*365,30)), c(2:6)]
   init1 = setNames(as.numeric(round(eq)), colnames(eq))
 
   set.seed(sim)
   
   fill[[1]] = ssa.adaptivetau(init1, transitions, 
-                              sfx, params, tf=365)    #simulate 1 year of transmission
+                              sfx_mda, params, tf=365)    #simulate 1 year of transmission
 
   for(m in 2:21){    #simulate 20 years of education + MDA
     init = setNames(as.numeric(fill[[m-1]][dim(fill[[m-1]])[1],c(2:6)]), 
@@ -55,7 +56,7 @@ stoch.sim = function(init, cov, sim){
     init[4] = round(init[4]* (1-eff))  #apply MDA
 
     fill[[m]] = ssa.adaptivetau(init, transitions, 
-                                sfx, params, tf=365) #stochastic sim for a year
+                                sfx_mda, params, tf=365) #stochastic sim for a year
 
     fill[[m]][,1] = fill[[m]][,1] + (365*(m-1)+(m-1))    #adjust time
   }
@@ -68,7 +69,7 @@ stoch.sim = function(init, cov, sim){
     #init[4] = round(init[4]* (1-eff))  #NO MDA
     
     fill[[f]] = ssa.adaptivetau(init, transitions, 
-                                sfx, params, tf=365) #stochastic sim for a year
+                                sfx_mda, params, tf=365) #stochastic sim for a year
     
     
     fill[[f]][,1] = fill[[f]][,1] + (365*(f-1)+(f-1))    #adjust time

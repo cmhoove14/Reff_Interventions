@@ -1,6 +1,7 @@
 source("/Users/lukestrgar/Documents/lab/params.R")
+source("/Users/lukestrgar/Documents/lab/model_funcs_tools.R")
 
-sfx_MDA <- function(x, params, t) {
+sfx_mda <- function(x, params, t) {
   H = params["H"] #Human population size (assumed constant)
   mu_N = params["mu_N"] #Natural snail death rate
   mu_I = params["mu_I"] #Increased death rate of infected snails

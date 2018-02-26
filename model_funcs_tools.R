@@ -70,7 +70,7 @@ reff_prof <- function(w_range = w_vals) {
 }
 
 plot_reff <- function(w_range = w_vals) {
-  reff_prof(w_range)
+  reff_vals <- reff_prof(w_range)
   reff_data <- data.frame(reff_vals)
   w_data <- data.frame(w_range)
   

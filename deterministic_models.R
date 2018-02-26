@@ -1,4 +1,5 @@
 source("/Users/lukestrgar/Documents/lab/params.R")
+source("/Users/lukestrgar/Documents/lab/model_funcs_tools.R")
 
 schisto_noMDA_ODE <- function(time, state, params) {
   
