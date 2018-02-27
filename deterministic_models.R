@@ -85,7 +85,7 @@ schisto_MDA_ODE <- function(time, state, params) {
   Wt = state['Wt']
   Wu = state['Wu']
   W = cov*Wt+(1-cov)*Wu
-  
+
   phi = phi_Wk(W)
   psi = psi_W(W)
   f = f_Wgk(W)

@@ -2,6 +2,7 @@ library(deSolve)
 library(adaptivetau)
 
 source("/Users/lukestrgar/Documents/lab/params.R")
+source("/Users/lukestrgar/Documents/lab/model_funcs_tools.R")
 source("/Users/lukestrgar/Documents/lab/stochastic_models.R")
 source("/Users/lukestrgar/Documents/lab/deterministic_models.R")
 
@@ -32,14 +33,18 @@ stoch.sim = function(init, reduc, sim){
   frac = (1-reduc)^(1/20)
   print("Simulation #")
   print(sim)
-  eq = as.data.frame(ode(y=init,times=seq(0,200*365,30),
-                         func=schisto_noMDA_ODE,parms=params,method="ode23"))[length(seq(0,200*365,30)), c(2:5)]
+  eq_traj = as.data.frame(ode(y=init,times=seq(0,200*365,30),
+                              func=schisto_noMDA_ODE,parms=params,method="ode23"))
+  eq = eq_traj[length(seq(0,200*365,30)), c(2:5)]
+  w.traj.nomda = c(w.traj.nomda, eq$W)
+  assign('w.traj.nomda', w.traj.nomda, envir = .GlobalEnv)
   init1 = setNames(as.numeric(round(eq)), colnames(eq))
   
   set.seed(sim)
   
   fill[[1]] = ssa.adaptivetau(init1, transitions, sfx_noMDA, params, tf=365)    #simulate 1 year of transmission
-
+  w.traj.nomda = c(w.traj.nomda, as.data.frame(fill[[1]])$W)
+  assign('w.traj.nomda', w.traj.nomda, envir = .GlobalEnv)  
 
 for(m in 2:21){    #simulate 20 years of sanitation
   init = setNames(as.numeric(fill[[m-1]][dim(fill[[m-1]])[1],c(2:5)]), 
@@ -48,6 +53,8 @@ for(m in 2:21){    #simulate 20 years of sanitation
   params["nu"] = frac*params["nu"] #apply sanitation
   fill[[m]] = ssa.adaptivetau(init, transitions, 
                               sfx_noMDA, params, tf=365) #stochastic sim for a year
+  w.traj.nomda = c(w.traj.nomda, as.data.frame(fill[[m]])$W)
+  assign('w.traj.nomda', w.traj.nomda, envir = .GlobalEnv)
   
   fill[[m]][,1] = fill[[m]][,1] + (365*(m-1)+(m-1))    #adjust time
 }
@@ -60,7 +67,8 @@ for(f in 22:years){
 
   fill[[f]] = ssa.adaptivetau(init, transitions, 
                               sfx_noMDA, params, tf=365) #stochastic sim for a year
-  
+  w.traj.nomda = c(w.traj.nomda, as.data.frame(fill[[f]])$W)
+  assign('w.traj.nomda', w.traj.nomda, envir = .GlobalEnv)
   
   fill[[f]][,1] = fill[[f]][,1] + (365*(f-1)+(f-1))    #adjust time
 }
@@ -74,7 +82,7 @@ assign('fill.test', fill.test, envir = .GlobalEnv)
 
 ### Number of simulations and parameters to simulate over
 par.sims = 1
-reduc.range = seq(.9,1,length=par.sims)
+reduc.range = seq(.5,1,length=par.sims)
 year.days = as.numeric()
 for(i in 1:20){
   year.days[i] = 365*i + (i-1)
@@ -83,6 +91,7 @@ stoch.sims = 1
 years = 61
 fill = list()
 fin.vals = c()
+w.traj.nomda = c()
 
 ### Simulation Loop
 for(i in 1:par.sims) {

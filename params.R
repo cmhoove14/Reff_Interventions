@@ -7,10 +7,10 @@ params <- c("H" = 300,
             "f_N" = 0.1, 
             "m1" = 140, 
             "m2" = 3500, 
-            "beta" = 2e-06,
+            "beta" = 1.5e-06,
             "sigma" = 1/40, 
             "K" = 10000, 
-            "nu" = 0.5, 
+            "nu" = 0.1, 
             "omega" = 1, 
             "rho" = .43, 
             "pi_c" = 1.5e-08,
@@ -40,4 +40,3 @@ rho <- params["rho"] #Per-capita human water contact rate
 pi_c <- params["pi_c"] #Probability of parasite establishment per human water contact for an individual cercariae 
 s <- params["s"] #Number of snails per Unit Area
 A <- params["A"] #Habitable units of area
-
