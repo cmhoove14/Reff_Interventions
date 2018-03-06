@@ -1,6 +1,7 @@
 source("/Users/lukestrgar/Documents/lab/params.R")
 source("/Users/lukestrgar/Documents/lab/model_funcs_tools.R")
 
+## Stochastic model for simulations w/MDA
 sfx_mda <- function(x, params, t) {
   H = params["H"] #Human population size (assumed constant)
   mu_N = params["mu_N"] #Natural snail death rate
@@ -50,7 +51,7 @@ sfx_mda <- function(x, params, t) {
   
 }
 
-### Model
+### Stochastic model for simulations w/o MDA
 sfx_noMDA <- function(x, params, t) {
   H = params["H"] #Human population size (assumed constant)
   mu_N = params["mu_N"] #Natural snail death rate

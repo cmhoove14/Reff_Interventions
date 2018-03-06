@@ -1,4 +1,4 @@
-
+## Non density dependent parameters
 params <- c("H" = 300, 
             "mu_N" =  1/60, 
             "mu_I" = ((1/10)-(1/60)), 
@@ -17,6 +17,7 @@ params <- c("H" = 300,
             "s" = 50, 
             "A" = 200)
 
+## Density Dependent Parameters
 dd_params <- c("k" = 0.2,
                "psi_gam" = 4,
                "psi_omeg" = .1,

@@ -1,6 +1,7 @@
 source("/Users/lukestrgar/Documents/lab/params.R")
 source("/Users/lukestrgar/Documents/lab/model_funcs_tools.R")
 
+## ODE for simulations w/o MDA. Only one W state.
 schisto_noMDA_ODE <- function(time, state, params) {
   
   H = params["H"] #Human population size (assumed constant)
@@ -54,6 +55,7 @@ schisto_noMDA_ODE <- function(time, state, params) {
   
 }
 
+## ODE for simulations w/MDA. Two W states. 
 schisto_MDA_ODE <- function(time, state, params) {
   
   H = params["H"] #Human population size (assumed constant)

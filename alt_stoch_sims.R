@@ -14,7 +14,7 @@ source("/Users/lukestrgar/Documents/lab/deterministic_models.R")
 start = c(S = 5000, # susceptible snails
           E = 2000, # infected snails
           I = 500, # infected snails
-          W = 72) # worms in untreated population
+          W = 72) # worms in population
 
 ### Model Transitions
 transitions = list(
@@ -25,24 +25,30 @@ transitions = list(
   c(E = -1, I = 1),     #Exposed snail becomes Infected
   c(I = -1),            #Infected snail dies
   c(W = 1),  #Infected snail emits cercaria that produces an adult worm
-  c(W = -1))           #Adult worm in the untreated population dies
+  c(W = -1))           #Adult worm in population dies
 
 
 #function to simulate transmission over 61 years (1 year transmission spin up, 20 yrs sanitation, 40 yrs recovery)
 stoch.sim = function(init, reduc, sim){
+  ## Fraction to reduce nu by every iteration
   frac = (1-reduc)^(1/20)
-  print("Simulation #")
-  print(sim)
+  
+  ## Run model to eq. 
   eq_traj = as.data.frame(ode(y=init,times=seq(0,200*365,30),
                               func=schisto_noMDA_ODE,parms=params,method="ode23"))
   eq = eq_traj[length(seq(0,200*365,30)), c(2:5)]
+  
+  ## Save model traj
   w.traj.nomda = c(w.traj.nomda, eq$W)
   assign('w.traj.nomda', w.traj.nomda, envir = .GlobalEnv)
+  
   init1 = setNames(as.numeric(round(eq)), colnames(eq))
   
   set.seed(sim)
   
   fill[[1]] = ssa.adaptivetau(init1, transitions, sfx_noMDA, params, tf=365)    #simulate 1 year of transmission
+  
+  ## Save model traj
   w.traj.nomda = c(w.traj.nomda, as.data.frame(fill[[1]])$W)
   assign('w.traj.nomda', w.traj.nomda, envir = .GlobalEnv)  
 
@@ -53,6 +59,8 @@ for(m in 2:21){    #simulate 20 years of sanitation
   params["nu"] = frac*params["nu"] #apply sanitation
   fill[[m]] = ssa.adaptivetau(init, transitions, 
                               sfx_noMDA, params, tf=365) #stochastic sim for a year
+  
+  ## Save model traj
   w.traj.nomda = c(w.traj.nomda, as.data.frame(fill[[m]])$W)
   assign('w.traj.nomda', w.traj.nomda, envir = .GlobalEnv)
   
@@ -91,6 +99,9 @@ stoch.sims = 1
 years = 61
 fill = list()
 fin.vals = c()
+
+### vector for tracking W traj. NOTE -- this is a global variable and is setup to be written to for a single simulation
+  ### (i.e. par.sims = stoch.sims = 1)
 w.traj.nomda = c()
 
 ### Simulation Loop
@@ -115,4 +126,8 @@ for(i in 1:par.sims) {
   
   fin.vals[length(fin.vals)+1] = sum(pe1) / stoch.sims
 } ## End of Simulation Loop
+
+## Plot model trajectory
+nomda_times = seq(1, length(w.traj.nomda) - 1)
+plot(no_times, w.traj.nomda, type='l', col="red")
 
